@@ -1,9 +1,3 @@
-/**
- * ProxiSpeak Mock Bot Simulator
- * Spawns automated AI peers that roam the geospatial canvas, emit spatial audio cues,
- * and test dynamic HRTF 3D panning and acoustic zones.
- */
-
 class MockBotSimulator {
   constructor(spatialEngine, broadcastCallback) {
     this.spatialEngine = spatialEngine;
@@ -74,7 +68,6 @@ class MockBotSimulator {
       z: 0
     };
 
-    // Calculate initial position
     bot.x = bot.center.x + Math.cos(bot.currentAngle) * bot.radius;
     bot.y = bot.center.y + Math.sin(bot.currentAngle) * bot.radius;
     bot.heading = ((bot.currentAngle + Math.PI / 2) * 180) / Math.PI;
@@ -117,7 +110,7 @@ class MockBotSimulator {
       this.timer = null;
     }
     for (const id of Array.from(this.bots.keys())) {
-      this.removeBot(id); // removes from engine and notifies clients so they drop stale bots
+      this.removeBot(id); 
     }
     console.log('[MockBots] Simulator stopped');
   }
@@ -137,7 +130,6 @@ class MockBotSimulator {
       bot.x = bot.center.x + Math.cos(bot.currentAngle) * bot.radius;
       bot.y = bot.center.y + Math.sin(bot.currentAngle) * bot.radius;
 
-      // Heading aligned with movement vector
       const dx = bot.x - prevX;
       const dy = bot.y - prevY;
       let heading = (Math.atan2(dy, dx) * 180) / Math.PI;
