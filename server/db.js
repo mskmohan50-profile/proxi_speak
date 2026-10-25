@@ -1,16 +1,9 @@
-/**
- * ProxiSpeak Database Access Layer
- * Supports SQLite3 with an automatic file-backed JSON persistence fallback.
- * Manages user accounts, active sessions, audio beacons, and zone configurations.
- */
-
 const fs = require('fs');
 const path = require('path');
 
 const DB_PATH = path.join(__dirname, '..', 'data', 'proxispeak.db');
 const JSON_FALLBACK_PATH = path.join(__dirname, '..', 'data', 'proxispeak_data.json');
 
-// Ensure data directory exists
 const dataDir = path.dirname(DB_PATH);
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
