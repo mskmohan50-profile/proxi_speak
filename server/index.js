@@ -1,8 +1,3 @@
-/**
- * ProxiSpeak Main Server
- * Express HTTP + WebSocket Signaling Server + Spatial Engine + Zone Manager
- */
-
 const http = require('http');
 const path = require('path');
 const express = require('express');

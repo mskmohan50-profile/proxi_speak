@@ -1,12 +1,3 @@
-/**
- * ProxiSpeak Evaluation Benchmark Suite
- * Evaluates:
- * 1. Spatial Audio Distance Attenuation Curve Precision vs Theoretical Inverse Square Law
- * 2. Spatial Grid Indexing Speedup vs Naive O(N^2) Brute Force Search
- * 3. Mesh Culling Bandwidth Optimization Ratio
- * 4. Spatial Position Update Processing Throughput and Latency Percentiles (p50, p95, p99)
- */
-
 const fs = require('fs');
 const path = require('path');
 const SpatialEngine = require('../server/spatialEngine');
