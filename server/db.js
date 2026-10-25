@@ -27,7 +27,7 @@ class DatabaseManager {
         const sqlite3 = require('sqlite3').verbose();
         this.sqliteDb = new sqlite3.Database(DB_PATH, async (err) => {
           if (err) {
-            console.warn('[DB] SQLite native initialization warning, falling back to JSON storage:', err.message);
+            console.warn('[DB] SQLite initialization warning, falling back to JSON storage:', err.message);
             this.initJsonFallback();
             resolve();
           } else {
@@ -38,7 +38,7 @@ class DatabaseManager {
           }
         });
       } catch (e) {
-        console.warn('[DB] SQLite3 module not available or native build missing, using file-backed JSON storage:', e.message);
+        console.warn('[DB] SQLite3 module unavailable, using JSON storage:', e.message);
         this.initJsonFallback();
         resolve();
       }
@@ -65,7 +65,7 @@ class DatabaseManager {
       CREATE TABLE IF NOT EXISTS zones (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
-        type TEXT NOT NULL, /* echo, muffled, broadcast, quiet, normal */
+        type TEXT NOT NULL,
         x REAL NOT NULL,
         y REAL NOT NULL,
         radius REAL NOT NULL,
@@ -78,7 +78,7 @@ class DatabaseManager {
       CREATE TABLE IF NOT EXISTS audio_beacons (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
-        sound_type TEXT NOT NULL, /* ambient, announcement, siren, tone */
+        sound_type TEXT NOT NULL,
         x REAL NOT NULL,
         y REAL NOT NULL,
         radius REAL NOT NULL,
@@ -110,15 +110,17 @@ class DatabaseManager {
 
   initJsonFallback() {
     this.isSqlite = false;
+
     if (fs.existsSync(JSON_FALLBACK_PATH)) {
       try {
         const raw = fs.readFileSync(JSON_FALLBACK_PATH, 'utf-8');
         this.memoryStore = JSON.parse(raw);
         console.log(`[DB] Loaded persistent data store from ${JSON_FALLBACK_PATH}`);
       } catch (err) {
-        console.error('[DB] Error parsing fallback json:', err);
+        console.error('[DB] Error parsing fallback JSON:', err);
       }
     }
+
     this.seedDefaultData();
   }
 
@@ -192,7 +194,7 @@ class DatabaseManager {
         x: 0,
         y: 0,
         radius: 65,
-        frequency: 523.25, // C5
+        frequency: 523.25,
         interval_sec: 10
       },
       {
@@ -208,39 +210,64 @@ class DatabaseManager {
     ];
 
     if (this.isSqlite) {
-      const zonePromises = defaultZones.map(z => {
-        return new Promise((res) => {
+      const zonePromises = defaultZones.map((z) => {
+        return new Promise((resolve) => {
           this.sqliteDb.run(
-            `INSERT OR IGNORE INTO zones (id, name, type, x, y, radius, reverb_level, cutoff_freq, max_gain, color)
+            `INSERT OR IGNORE INTO zones
+             (id, name, type, x, y, radius, reverb_level, cutoff_freq, max_gain, color)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [z.id, z.name, z.type, z.x, z.y, z.radius, z.reverb_level, z.cutoff_freq, z.max_gain, z.color],
-            () => res()
+            [
+              z.id,
+              z.name,
+              z.type,
+              z.x,
+              z.y,
+              z.radius,
+              z.reverb_level,
+              z.cutoff_freq,
+              z.max_gain,
+              z.color
+            ],
+            () => resolve()
           );
         });
       });
-      const beaconPromises = defaultBeacons.map(b => {
-        return new Promise((res) => {
+
+      const beaconPromises = defaultBeacons.map((b) => {
+        return new Promise((resolve) => {
           this.sqliteDb.run(
-            `INSERT OR IGNORE INTO audio_beacons (id, name, sound_type, x, y, radius, frequency, interval_sec)
+            `INSERT OR IGNORE INTO audio_beacons
+             (id, name, sound_type, x, y, radius, frequency, interval_sec)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [b.id, b.name, b.sound_type, b.x, b.y, b.radius, b.frequency, b.interval_sec],
-            () => res()
+            [
+              b.id,
+              b.name,
+              b.sound_type,
+              b.x,
+              b.y,
+              b.radius,
+              b.frequency,
+              b.interval_sec
+            ],
+            () => resolve()
           );
         });
       });
+
       await Promise.all([...zonePromises, ...beaconPromises]);
     } else {
       if (!this.memoryStore.zones.length) {
         this.memoryStore.zones = defaultZones;
       }
+
       if (!this.memoryStore.beacons.length) {
         this.memoryStore.beacons = defaultBeacons;
       }
+
       this.persistJson();
     }
   }
 
-  // --- Zone Queries ---
   async getAllZones() {
     if (this.isSqlite) {
       return new Promise((resolve, reject) => {
@@ -250,6 +277,7 @@ class DatabaseManager {
         });
       });
     }
+
     return this.memoryStore.zones;
   }
 
@@ -257,9 +285,21 @@ class DatabaseManager {
     if (this.isSqlite) {
       return new Promise((resolve, reject) => {
         this.sqliteDb.run(
-          `INSERT INTO zones (id, name, type, x, y, radius, reverb_level, cutoff_freq, max_gain, color)
+          `INSERT INTO zones
+           (id, name, type, x, y, radius, reverb_level, cutoff_freq, max_gain, color)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [zone.id, zone.name, zone.type, zone.x, zone.y, zone.radius, zone.reverb_level || 0, zone.cutoff_freq || 20000, zone.max_gain || 1, zone.color || '#4f46e5'],
+          [
+            zone.id,
+            zone.name,
+            zone.type,
+            zone.x,
+            zone.y,
+            zone.radius,
+            zone.reverb_level || 0,
+            zone.cutoff_freq || 20000,
+            zone.max_gain || 1,
+            zone.color || '#4f46e5'
+          ],
           function (err) {
             if (err) reject(err);
             else resolve(zone);
@@ -267,12 +307,12 @@ class DatabaseManager {
         );
       });
     }
+
     this.memoryStore.zones.push(zone);
     this.persistJson();
     return zone;
   }
 
-  // --- Beacon Queries ---
   async getAllBeacons() {
     if (this.isSqlite) {
       return new Promise((resolve, reject) => {
@@ -282,12 +322,15 @@ class DatabaseManager {
         });
       });
     }
+
     return this.memoryStore.beacons;
   }
 
-  // --- Telemetry Logging ---
   logEvent(eventType, userId, details) {
-    const detailsStr = typeof details === 'string' ? details : JSON.stringify(details);
+    const detailsStr = typeof details === 'string'
+      ? details
+      : JSON.stringify(details);
+
     if (this.isSqlite) {
       this.sqliteDb.run(
         'INSERT INTO telemetry_logs (event_type, user_id, details) VALUES (?, ?, ?)',
@@ -304,9 +347,11 @@ class DatabaseManager {
         user_id: userId,
         details: detailsStr
       });
+
       if (this.memoryStore.logs.length > 1000) {
         this.memoryStore.logs.shift();
       }
+
       this.persistJson();
     }
   }
