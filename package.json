@@ -1,0 +1,29 @@
+{
+  "name": "proxispeak-geospatial-audio-ecosystem",
+  "version": "1.0.0",
+  "description": "ProxiSpeak: Geospatial Proximity Audio Ecosystem - Real-time spatial voice communication and acoustic zone simulation",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "benchmark": "node evaluation/run_benchmarks.js",
+    "test": "node evaluation/run_benchmarks.js"
+  },
+  "keywords": [
+    "geospatial",
+    "proximity-audio",
+    "spatial-audio",
+    "webaudio",
+    "webrtc",
+    "websockets",
+    "hrtf",
+    "infotact"
+  ],
+  "author": "Infotact Solutions Intern",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.2",
+    "ws": "^8.18.0",
+    "sqlite3": "^5.1.7"
+  }
+}

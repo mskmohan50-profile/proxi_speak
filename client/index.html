@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ProxiSpeak | Geospatial Proximity Audio Ecosystem</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="app-header">
+    <div class="brand-section">
+      <div class="brand-logo">📡</div>
+      <div>
+        <h1 class="brand-title">ProxiSpeak</h1>
+        <div class="brand-subtitle">Geospatial Proximity Audio Ecosystem · Infotact Solutions</div>
+      </div>
+    </div>
+
+    <!-- Live Telemetry Stats -->
+    <div class="header-telemetry">
+      <div class="stat-pill">
+        <span id="connectionDot" class="status-dot"></span>
+        <span id="connectionText">Signaling: Live</span>
+      </div>
+      <div class="stat-pill">
+        <span>Latency:</span>
+        <strong id="pingValue" style="color: var(--accent-cyan); font-family: monospace;">--ms</strong>
+      </div>
+      <div class="stat-pill">
+        <span>Active Peers:</span>
+        <strong id="activePeersCount" style="color: var(--accent-emerald); font-family: monospace;">1</strong>
+      </div>
+      <div class="stat-pill" title="Bandwidth savings achieved through Spatial Grid Culling vs naive full mesh">
+        <span>Mesh Culling:</span>
+        <strong id="cullingSavings" style="color: var(--accent-amber); font-family: monospace;">--%</strong>
+      </div>
+    </div>
+
+    <!-- Quick Navigation Links -->
+    <div class="header-links">
+      <a href="/api/status" target="_blank" class="nav-btn" title="Live server status & traffic counters (JSON)">📊 Live Status</a>
+      <a href="/api/zones" target="_blank" class="nav-btn" title="Acoustic zone definitions (JSON)">🗺️ Zones</a>
+      <button id="btnHelp" class="nav-btn" title="Controls & how to test with two tabs">❓ Help</button>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="main-layout">
+    <!-- Interactive Canvas Radar -->
+    <section class="map-container">
+      <canvas id="radarCanvas"></canvas>
+
+      <!-- Radar HUD Overlay -->
+      <div class="radar-hud-overlay">
+        <div class="hud-row">
+          <span class="hud-label">COORDINATES:</span>
+          <span id="hudCoords" class="hud-val">0.0m, 0.0m</span>
+        </div>
+        <div class="hud-row">
+          <span class="hud-label">BEARING:</span>
+          <span id="hudHeading" class="hud-val">90.0° (N)</span>
+        </div>
+        <div class="hud-row">
+          <span class="hud-label">ACOUSTIC ZONE:</span>
+          <span id="hudZone" class="hud-val" style="color: #a78bfa;">Open Space (Free Air)</span>
+        </div>
+        <div class="hud-row">
+          <span class="hud-label">AUDIBLE PEERS:</span>
+          <span id="hudAudibleCount" class="hud-val" style="color: var(--accent-emerald);">0</span>
+        </div>
+      </div>
+
+      <!-- Radar View Controls -->
+      <div class="radar-view-controls">
+        <button id="btnZoomIn" class="icon-btn" title="Zoom In" onclick="window.spatialMapInstance && (window.spatialMapInstance.scale = Math.min(15, window.spatialMapInstance.scale * 1.2))">+</button>
+        <button id="btnZoomOut" class="icon-btn" title="Zoom Out" onclick="window.spatialMapInstance && (window.spatialMapInstance.scale = Math.max(3, window.spatialMapInstance.scale * 0.8))">-</button>
+      </div>
+    </section>
+
+    <!-- Right Control & Telemetry Sidebar -->
+    <aside class="control-sidebar">
+      
+      <!-- Microphone & Audio Transceiver -->
+      <div class="panel-card">
+        <div class="card-title">
+          <span>🎙️ Voice Transceiver</span>
+          <span style="font-size: 0.7rem; color: var(--accent-emerald);">HRTF 3D Enabled</span>
+        </div>
+        
+        <div id="voiceStatus" class="voice-status idle">Mic off · enable it to talk to people nearby</div>
+
+        <div class="mic-controls-row">
+          <button id="btnMic" class="btn btn-primary" title="Connect microphone">🎙️ Enable Mic</button>
+          <button id="btnMute" class="btn" title="Toggle mute (M)">🎙️ Mute</button>
+          <button id="btnDeafen" class="btn" title="Toggle deafen (F)">🎧 Deafen</button>
+        </div>
+
+        <div class="slider-header">
+          <span>Live Input Spectrum</span>
+          <span>Voice Activity (VAD)</span>
+        </div>
+        <canvas id="spectrumCanvas" class="spectrum-canvas" width="370" height="60"></canvas>
+
+        <div style="display: flex; gap: 0.5rem; margin-top: 0.25rem;">
+          <button id="btnTestTone" class="btn" style="font-size: 0.75rem;">🔔 Test 3D Ping</button>
+          <button id="btnToggleBots" class="btn btn-primary" style="font-size: 0.75rem;">Pause Bots</button>
+        </div>
+      </div>
+
+      <!-- Real-Time Usage -->
+      <div class="panel-card">
+        <div class="card-title">
+          <span>📈 Real-Time Usage</span>
+          <span id="usageSession" style="font-size: 0.7rem; color: var(--text-secondary); font-family: monospace;">00:00</span>
+        </div>
+        <div class="usage-grid">
+          <div class="metric-box"><div class="metric-label">Upload</div><div id="usageUp" class="metric-value">0 kbps</div></div>
+          <div class="metric-box"><div class="metric-label">Download</div><div id="usageDown" class="metric-value">0 kbps</div></div>
+          <div class="metric-box"><div class="metric-label">Voice Streams In</div><div id="usageStreamsIn" class="metric-value">0</div></div>
+          <div class="metric-box"><div class="metric-label">Voice Packets Out</div><div id="usagePktsOut" class="metric-value">0/s</div></div>
+          <div class="metric-box"><div class="metric-label">Data Used</div><div id="usageTotal" class="metric-value">0 KB</div></div>
+          <div class="metric-box"><div class="metric-label">Humans Online</div><div id="usageHumans" class="metric-value">1</div></div>
+        </div>
+        <canvas id="usageGraph" class="usage-graph" width="370" height="48"></canvas>
+      </div>
+
+      <!-- Profile -->
+      <div class="panel-card">
+        <div class="card-title"><span>🧑 Your Profile</span></div>
+        <div class="profile-row">
+          <input id="profileName" class="text-input" type="text" maxlength="24" placeholder="Display name" autocomplete="off">
+          <input id="profileColor" class="color-input" type="color" value="#06b6d4" title="Avatar colour">
+          <button id="btnProfileSave" class="btn btn-primary" style="font-size: 0.75rem;">Save</button>
+        </div>
+      </div>
+
+      <!-- Acoustic Environment State -->
+      <div class="panel-card">
+        <div class="card-title">
+          <span>🏛️ Acoustic Profile</span>
+          <span id="metricZoneType" style="font-size: 0.7rem; color: #a78bfa;">FREE-FIELD</span>
+        </div>
+        <div class="acoustic-metrics-grid">
+          <div class="metric-box">
+            <div class="metric-label">Reverb Decay</div>
+            <div id="metricReverb" class="metric-value">0%</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-label">Occlusion Cutoff</div>
+            <div id="metricCutoff" class="metric-value">20,000 Hz</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Spatial Audio Engine Calibration -->
+      <div class="panel-card">
+        <div class="card-title">
+          <span>🎛️ Spatial Engine Tuning</span>
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-header">
+            <span>Hearing Radius:</span>
+            <span id="rangeValue" style="color: var(--accent-cyan); font-weight: 600;">35m</span>
+          </div>
+          <input type="range" id="rangeSlider" min="10" max="80" step="5" value="35">
+        </div>
+
+        <div class="slider-group" style="margin-top: 0.5rem;">
+          <div class="slider-header">
+            <span>Attenuation Model:</span>
+          </div>
+          <select id="modelSelect" style="width: 100%; background: #1f2937; color: #fff; border: 1px solid var(--border-color); padding: 0.4rem; border-radius: 4px; font-size: 0.8rem;">
+            <option value="inverse" selected>Inverse Square Law (Physics Standard)</option>
+            <option value="exponential">Exponential Falloff</option>
+            <option value="linear">Linear Attenuation</option>
+          </select>
+        </div>
+
+        <div class="slider-group" style="margin-top: 0.5rem;">
+          <div class="slider-header">
+            <span>Rolloff Factor:</span>
+            <span id="rolloffValue" style="color: var(--accent-cyan); font-weight: 600;">1.2</span>
+          </div>
+          <input type="range" id="rolloffSlider" min="0.5" max="3.0" step="0.1" value="1.2">
+        </div>
+      </div>
+
+      <!-- Proximity Chat -->
+      <div class="panel-card">
+        <div class="card-title">
+          <span>💬 Proximity Chat</span>
+          <label class="inline-check"><input type="checkbox" id="chatGlobal"> Everyone</label>
+        </div>
+        <div id="chatLog" class="chat-log"><div class="empty-state">Only people in hearing range see your messages.<br>Press <span class="kbd">Enter</span> to type.</div></div>
+        <div class="chat-input-row">
+          <input id="chatInput" class="text-input" type="text" maxlength="280" placeholder="Say something nearby..." autocomplete="off">
+          <button id="btnChatSend" class="btn btn-primary" style="font-size: 0.75rem;">Send</button>
+        </div>
+      </div>
+
+      <!-- Audible Neighbors List -->
+      <div class="panel-card" style="flex: 1;">
+        <div class="card-title">
+          <span>📡 Audible In-Range Peers</span>
+        </div>
+        <div id="peersContainer" class="peers-list">
+          <div class="empty-state">Calculating neighborhood graph...</div>
+        </div>
+      </div>
+
+    </aside>
+  </main>
+
+  <!-- Interactive Controls Footer -->
+  <footer class="app-footer">
+    <div style="display: flex; gap: 1rem; align-items: center;">
+      <span><strong>Navigation:</strong> <span class="kbd">W</span><span class="kbd">A</span><span class="kbd">S</span><span class="kbd">D</span> or <span class="kbd">Arrow Keys</span> or <strong>Click on Map</strong> to steer</span>
+      <span><strong>PTT:</strong> Hold <span class="kbd">Spacebar</span></span>
+      <span><strong>Shortcuts:</strong> <span class="kbd">M</span> Mute · <span class="kbd">F</span> Deafen · <span class="kbd">Enter</span> Chat</span>
+    </div>
+    <div>
+      <span>ProxiSpeak v1.1.0 · Web Audio API · HRTF Spatializer</span>
+    </div>
+  </footer>
+
+  <!-- Help Modal -->
+  <div id="helpModal" class="modal hidden">
+    <div class="modal-card">
+      <div class="card-title"><span>❓ How to use ProxiSpeak</span><button id="btnHelpClose" class="icon-btn">×</button></div>
+      <ul class="help-list">
+        <li><strong>Move:</strong> W A S D / arrow keys, or click anywhere on the radar.</li>
+        <li><strong>Talk:</strong> click <em>Enable Mic</em>, then speak (auto voice detection) or hold <span class="kbd">Space</span>.</li>
+        <li><strong>Two-person test:</strong> open this page in a second tab or on another device on your network (<code>http://YOUR-IP:3000</code>), use headphones, and walk apart: voices get quieter, pan left/right and muffle inside zones.</li>
+        <li><strong>Chat:</strong> <span class="kbd">Enter</span> to type; tick <em>Everyone</em> to broadcast to all.</li>
+        <li><strong>Mute a person:</strong> use the 🔇 button on their card in the audible list (only affects you).</li>
+        <li><strong>Zones:</strong> Auditorium = reverb, Library = muffled, Stage = amplified, Pod = private.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Application Scripts -->
+  <script src="js/audioEngine.js"></script>
+  <script src="js/spatialMap.js"></script>
+  <script src="js/network.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
